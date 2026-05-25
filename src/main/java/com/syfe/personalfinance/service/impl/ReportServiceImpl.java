@@ -2,6 +2,7 @@ package com.syfe.personalfinance.service.impl;
 
 import com.syfe.personalfinance.dto.ReportDto;
 import com.syfe.personalfinance.entity.User;
+import com.syfe.personalfinance.exception.BadRequestException;
 import com.syfe.personalfinance.enums.CategoryType;
 import com.syfe.personalfinance.repository.TransactionRepository;
 import com.syfe.personalfinance.service.ReportService;
@@ -33,6 +34,10 @@ public class ReportServiceImpl implements ReportService {
     public ReportDto.MonthlyReportResponse getMonthlyReport(int year, int month) {
         User currentUser = userService.getAuthenticatedUserEntity();
         log.info("Generating monthly report for {}-{} and user ID: {}", year, month, currentUser.getId());
+
+        if (month < 1 || month > 12) {
+            throw new BadRequestException("Invalid value for MonthOfYear (valid values 1 - 12): " + month);
+        }
 
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = LocalDate.of(year, month, startDate.lengthOfMonth());
