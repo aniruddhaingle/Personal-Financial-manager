@@ -164,6 +164,6 @@ public class SavingsGoalServiceImpl implements SavingsGoalService {
 
         BigDecimal remainingAmount = goal.getTargetAmount().subtract(currentProgress);
 
-        return savingsGoalMapper.toProgressResponse(goal, currentProgress, progressPercentage, remainingAmount);
+        return savingsGoalMapper.toProgressResponse(goal, currentProgress, progressPercentage.doubleValue(), remainingAmount);
     }
 }

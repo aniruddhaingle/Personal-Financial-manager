@@ -61,7 +61,7 @@ public class SavingsGoalDto {
         private LocalDate startDate;
         private LocalDate targetDate;
         private BigDecimal currentProgress;
-        private BigDecimal progressPercentage;
+        private Double progressPercentage;
         private BigDecimal remainingAmount;
     }
 

@@ -11,7 +11,7 @@ public class SavingsGoalMapper {
 
     public SavingsGoalDto.GoalProgressResponse toProgressResponse(SavingsGoal goal,
                                                                    BigDecimal currentProgress,
-                                                                   BigDecimal progressPercentage,
+                                                                   Double progressPercentage,
                                                                    BigDecimal remainingAmount) {
         if (goal == null) {
             return null;

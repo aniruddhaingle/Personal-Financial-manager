@@ -116,7 +116,7 @@ class SavingsGoalServiceTest {
                 .goalName("Car fund")
                 .targetAmount(new BigDecimal("10000.00"))
                 .currentProgress(new BigDecimal("3000.00"))
-                .progressPercentage(new BigDecimal("30.00"))
+                .progressPercentage(30.0)
                 .remainingAmount(new BigDecimal("7000.00"))
                 .build();
 
@@ -128,14 +128,14 @@ class SavingsGoalServiceTest {
         when(transactionRepository.sumAmountByUserIdAndCategoryTypeSinceDate(100L, CategoryType.EXPENSE, startDate))
                 .thenReturn(new BigDecimal("2000.00"));
 
-        when(savingsGoalMapper.toProgressResponse(eq(goal), any(BigDecimal.class), any(BigDecimal.class), any(BigDecimal.class)))
+        when(savingsGoalMapper.toProgressResponse(eq(goal), any(BigDecimal.class), any(Double.class), any(BigDecimal.class)))
                 .thenReturn(expectedProgress);
 
         GoalProgressResponse progress = savingsGoalService.getGoalProgress(1L);
 
         assertNotNull(progress);
         assertEquals(new BigDecimal("3000.00"), progress.getCurrentProgress());
-        assertEquals(new BigDecimal("30.00"), progress.getProgressPercentage());
+        assertEquals(30.0, progress.getProgressPercentage());
         assertEquals(new BigDecimal("7000.00"), progress.getRemainingAmount());
     }
 }
