@@ -7,12 +7,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class TransactionMapper {
 
-    private final CategoryMapper categoryMapper;
-
-    public TransactionMapper(CategoryMapper categoryMapper) {
-        this.categoryMapper = categoryMapper;
-    }
-
     public TransactionDto.TransactionResponse toResponse(Transaction transaction) {
         if (transaction == null) {
             return null;
@@ -22,7 +16,8 @@ public class TransactionMapper {
                 .amount(transaction.getAmount())
                 .date(transaction.getDate())
                 .description(transaction.getDescription())
-                .category(categoryMapper.toResponse(transaction.getCategory()))
+                .category(transaction.getCategory() != null ? transaction.getCategory().getName() : null)
+                .type(transaction.getCategory() != null ? transaction.getCategory().getType() : null)
                 .build();
     }
 

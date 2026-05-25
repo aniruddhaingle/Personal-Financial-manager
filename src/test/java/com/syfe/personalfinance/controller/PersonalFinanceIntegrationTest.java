@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test") // Run against the isolated H2 test profile
+@ActiveProfiles("test")
 class PersonalFinanceIntegrationTest {
 
     @Autowired
@@ -50,7 +50,6 @@ class PersonalFinanceIntegrationTest {
     @BeforeEach
     void setUp() {
         transactionRepository.deleteAll();
-        // Resolve seeded default categories or add if missing in clean slate
         seededFoodCategory = categoryRepository.findAllAvailableToUser(9999L)
                 .stream()
                 .filter(c -> "Food".equalsIgnoreCase(c.getName()))
@@ -67,7 +66,7 @@ class PersonalFinanceIntegrationTest {
         // 1. Unauthenticated Request: Try accessing transactions -> Assert 401 JSON
         mockMvc.perform(get("/api/transactions"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.error", is("Unauthorized")))
                 .andExpect(jsonPath("$.message", containsString("Unauthorized")));
 
         // 2. Register User A
@@ -81,8 +80,8 @@ class PersonalFinanceIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userARegister)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success", is(true)))
-                .andExpect(jsonPath("$.data.username", is("usera@syfe.com")));
+                .andExpect(jsonPath("$.message", is("User registered successfully")))
+                .andExpect(jsonPath("$.userId", notNullValue()));
 
         // 3. Login User A -> Extract Session Cookie
         AuthDto.LoginRequest userALogin = AuthDto.LoginRequest.builder()
@@ -94,7 +93,7 @@ class PersonalFinanceIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userALogin)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Login successful")))
                 .andReturn();
 
         HttpSession sessionA = loginAResult.getRequest().getSession(false);
@@ -133,40 +132,38 @@ class PersonalFinanceIntegrationTest {
         TransactionDto.CreateTransactionRequest transactionRequest = TransactionDto.CreateTransactionRequest.builder()
                 .amount(new BigDecimal("99.90"))
                 .date(LocalDate.now())
-                .categoryId(seededFoodCategory.getId())
+                .category("Food")
                 .description("User A Dinner")
                 .build();
 
         MvcResult transResult = mockMvc.perform(post("/api/transactions")
-                        .session(mockSessionA) // Using User A Session
+                        .session(mockSessionA)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(transactionRequest)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.description", is("User A Dinner")))
+                .andExpect(jsonPath("$.description", is("User A Dinner")))
                 .andReturn();
 
-        // Retrieve created transaction ID
         String responseContent = transResult.getResponse().getContentAsString();
-        Long transactionId = objectMapper.readTree(responseContent).path("data").path("id").asLong();
+        Long transactionId = objectMapper.readTree(responseContent).path("id").asLong();
 
-        // 7. Verify Data Isolation: User B lists transactions -> Should be empty page (0 elements)
+        // 7. Verify Data Isolation: User B lists transactions -> Should be empty
         mockMvc.perform(get("/api/transactions")
-                        .session(mockSessionB)) // Using User B Session
+                        .session(mockSessionB))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.content", hasSize(0)));
+                .andExpect(jsonPath("$.transactions", hasSize(0)));
 
-        // 8. Verify Data Isolation: User B attempts to delete User A's transaction -> Should fail with 404/403
+        // 8. Verify Data Isolation: User B attempts to delete User A's transaction -> Should fail with 404
         mockMvc.perform(delete("/api/transactions/" + transactionId)
-                        .session(mockSessionB)) // Using User B Session
-                .andExpect(status().isNotFound()) // Returns 404 because isolated query findByIdAndUserId returns Empty
-                .andExpect(jsonPath("$.success", is(false)));
+                        .session(mockSessionB))
+                .andExpect(status().isNotFound());
 
         // 9. User A lists transactions -> Should return 1 element
         mockMvc.perform(get("/api/transactions")
-                        .session(mockSessionA)) // Using User A Session
+                        .session(mockSessionA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.content", hasSize(1)))
-                .andExpect(jsonPath("$.data.content[0].description", is("User A Dinner")));
+                .andExpect(jsonPath("$.transactions", hasSize(1)))
+                .andExpect(jsonPath("$.transactions[0].description", is("User A Dinner")));
 
         // 10. Logout User A
         mockMvc.perform(post("/api/auth/logout")

@@ -13,12 +13,12 @@ import com.syfe.personalfinance.repository.TransactionRepository;
 import com.syfe.personalfinance.service.TransactionService;
 import com.syfe.personalfinance.service.UserService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -29,7 +29,6 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionMapper transactionMapper;
     private final UserService userService;
 
-    // Constructor injection only
     public TransactionServiceImpl(TransactionRepository transactionRepository,
                                   CategoryRepository categoryRepository,
                                   TransactionMapper transactionMapper,
@@ -46,17 +45,15 @@ public class TransactionServiceImpl implements TransactionService {
         User currentUser = userService.getAuthenticatedUserEntity();
         log.info("Creating new transaction of amount {} for user ID: {}", request.getAmount(), currentUser.getId());
 
-        // Enforce transaction date in the past or present (no future dates allowed)
         if (request.getDate().isAfter(LocalDate.now())) {
             log.warn("Transaction creation failed: Future date {} provided", request.getDate());
             throw new BadRequestException("Transaction date cannot be in the future");
         }
 
-        // Retrieve category, validating that it's either custom owned by the user or a global default
-        Category category = categoryRepository.findByIdAndUserAvailable(request.getCategoryId(), currentUser.getId())
+        Category category = categoryRepository.findByNameIgnoreCaseAndUserAvailable(request.getCategory(), currentUser.getId())
                 .orElseThrow(() -> {
-                    log.warn("Transaction creation failed: Category ID {} not found or unauthorized", request.getCategoryId());
-                    return new ResourceNotFoundException("Category not found or unavailable for this user");
+                    log.warn("Transaction creation failed: Category '{}' not found or unauthorized", request.getCategory());
+                    return new BadRequestException("Category not found or unavailable for this user");
                 });
 
         Transaction transaction = transactionMapper.toEntity(request);
@@ -71,21 +68,23 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TransactionDto.TransactionResponse> getTransactions(
+    public List<TransactionDto.TransactionResponse> getTransactions(
             LocalDate startDate,
             LocalDate endDate,
             String categoryName,
-            CategoryType categoryType,
-            Pageable pageable) {
+            Long categoryId,
+            CategoryType categoryType) {
 
         User currentUser = userService.getAuthenticatedUserEntity();
-        log.debug("Fetching transactions for user ID: {} with optional filters: startDate={}, endDate={}, category={}, type={}",
-                currentUser.getId(), startDate, endDate, categoryName, categoryType);
+        log.debug("Fetching transactions for user ID: {} with optional filters: startDate={}, endDate={}, categoryName={}, categoryId={}, type={}",
+                currentUser.getId(), startDate, endDate, categoryName, categoryId, categoryType);
 
-        Page<Transaction> transactionPage = transactionRepository.findAllFiltered(
-                currentUser.getId(), startDate, endDate, categoryName, categoryType, pageable);
+        List<Transaction> transactions = transactionRepository.findAllFiltered(
+                currentUser.getId(), startDate, endDate, categoryName, categoryId, categoryType);
 
-        return transactionPage.map(transactionMapper::toResponse);
+        return transactions.stream()
+                .map(transactionMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -94,24 +93,28 @@ public class TransactionServiceImpl implements TransactionService {
         User currentUser = userService.getAuthenticatedUserEntity();
         log.info("Updating transaction ID: {} for user ID: {}", id, currentUser.getId());
 
-        // Validate transaction ownership
         Transaction transaction = transactionRepository.findByIdAndUserId(id, currentUser.getId())
                 .orElseThrow(() -> {
                     log.warn("Transaction update failed: ID {} not found for user ID: {}", id, currentUser.getId());
                     return new ResourceNotFoundException("Transaction not found or unauthorized");
                 });
 
-        // Retrieve and validate new category
-        Category category = categoryRepository.findByIdAndUserAvailable(request.getCategoryId(), currentUser.getId())
-                .orElseThrow(() -> {
-                    log.warn("Transaction update failed: Category ID {} not found or unauthorized", request.getCategoryId());
-                    return new ResourceNotFoundException("Category not found or unavailable for this user");
-                });
+        if (request.getAmount() != null) {
+            transaction.setAmount(request.getAmount());
+        }
 
-        // Map updated fields (amount, description, category). Date is immutable and updatable=false, so we keep the original date intact.
-        transaction.setAmount(request.getAmount());
-        transaction.setDescription(request.getDescription());
-        transaction.setCategory(category);
+        if (request.getCategory() != null) {
+            Category category = categoryRepository.findByNameIgnoreCaseAndUserAvailable(request.getCategory(), currentUser.getId())
+                    .orElseThrow(() -> {
+                        log.warn("Transaction update failed: Category '{}' not found or unauthorized", request.getCategory());
+                        return new BadRequestException("Category not found or unavailable for this user");
+                    });
+            transaction.setCategory(category);
+        }
+
+        if (request.getDescription() != null) {
+            transaction.setDescription(request.getDescription());
+        }
 
         Transaction updatedTransaction = transactionRepository.save(transaction);
         log.info("Transaction ID: {} updated successfully", updatedTransaction.getId());

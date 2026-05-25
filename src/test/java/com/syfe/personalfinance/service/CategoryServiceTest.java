@@ -64,10 +64,9 @@ class CategoryServiceTest {
                 .build();
 
         CategoryResponse expectedResponse = CategoryResponse.builder()
-                .id(2L)
                 .name("Freelance")
                 .type(CategoryType.INCOME)
-                .isDefault(false)
+                .isCustom(true)
                 .build();
 
         when(userService.getAuthenticatedUserEntity()).thenReturn(testUser);
@@ -108,9 +107,9 @@ class CategoryServiceTest {
                 .build();
 
         when(userService.getAuthenticatedUserEntity()).thenReturn(testUser);
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(defaultCategory));
+        when(categoryRepository.findByNameIgnoreCaseAndUserAvailable("Food", 100L)).thenReturn(Optional.of(defaultCategory));
 
-        assertThrows(BadRequestException.class, () -> categoryService.deleteCategory(1L));
+        assertThrows(BadRequestException.class, () -> categoryService.deleteCategory("Food"));
         verify(categoryRepository, never()).delete(any(Category.class));
     }
 
@@ -125,9 +124,9 @@ class CategoryServiceTest {
                 .build();
 
         when(userService.getAuthenticatedUserEntity()).thenReturn(testUser);
-        when(categoryRepository.findById(5L)).thenReturn(Optional.of(customCategory));
+        when(categoryRepository.findByNameIgnoreCaseAndUserAvailable("Snacks", 100L)).thenReturn(Optional.of(customCategory));
 
-        assertThrows(ForbiddenException.class, () -> categoryService.deleteCategory(5L));
+        assertThrows(ForbiddenException.class, () -> categoryService.deleteCategory("Snacks"));
         verify(categoryRepository, never()).delete(any(Category.class));
     }
 
@@ -141,10 +140,10 @@ class CategoryServiceTest {
                 .build();
 
         when(userService.getAuthenticatedUserEntity()).thenReturn(testUser);
-        when(categoryRepository.findById(5L)).thenReturn(Optional.of(customCategory));
+        when(categoryRepository.findByNameIgnoreCaseAndUserAvailable("Snacks", 100L)).thenReturn(Optional.of(customCategory));
         when(transactionRepository.existsByCategoryId(5L)).thenReturn(true);
 
-        assertThrows(ConflictException.class, () -> categoryService.deleteCategory(5L));
+        assertThrows(ConflictException.class, () -> categoryService.deleteCategory("Snacks"));
         verify(categoryRepository, never()).delete(any(Category.class));
     }
 }

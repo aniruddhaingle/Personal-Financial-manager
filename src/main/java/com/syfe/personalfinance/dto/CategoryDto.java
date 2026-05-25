@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
+import java.util.List;
+
 public class CategoryDto {
 
     @Getter
@@ -26,9 +28,17 @@ public class CategoryDto {
     @AllArgsConstructor
     @Builder
     public static class CategoryResponse {
-        private Long id;
         private String name;
         private CategoryType type;
-        private boolean isDefault;
+        private boolean isCustom;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class CategoryListResponse {
+        private List<CategoryResponse> categories;
     }
 }

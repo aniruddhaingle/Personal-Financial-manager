@@ -12,11 +12,23 @@ public class ReportDto {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
-    public static class ReportResponse {
-        private BigDecimal totalIncome;
-        private BigDecimal totalExpense;
+    public static class MonthlyReportResponse {
+        private int month;
+        private int year;
+        private Map<String, BigDecimal> totalIncome;
+        private Map<String, BigDecimal> totalExpenses;
         private BigDecimal netSavings;
-        private Map<String, BigDecimal> incomeByCategory;
-        private Map<String, BigDecimal> expenseByCategory;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class YearlyReportResponse {
+        private int year;
+        private Map<String, BigDecimal> totalIncome;
+        private Map<String, BigDecimal> totalExpenses;
+        private BigDecimal netSavings;
     }
 }

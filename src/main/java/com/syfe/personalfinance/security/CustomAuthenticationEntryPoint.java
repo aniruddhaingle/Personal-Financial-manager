@@ -1,7 +1,6 @@
 package com.syfe.personalfinance.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.syfe.personalfinance.dto.ApiResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,6 +11,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
@@ -28,13 +29,13 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-        ApiResponse<Object> apiResponse = ApiResponse.builder()
-                .success(false)
-                .message("Unauthorized: Please log in to access this resource")
-                .data(null)
-                .timestamp(LocalDateTime.now())
-                .build();
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now().toString());
+        body.put("status", HttpServletResponse.SC_UNAUTHORIZED);
+        body.put("error", "Unauthorized");
+        body.put("message", "Unauthorized: Please log in to access this resource");
+        body.put("path", request.getRequestURI());
 
-        objectMapper.writeValue(response.getOutputStream(), apiResponse);
+        objectMapper.writeValue(response.getOutputStream(), body);
     }
 }

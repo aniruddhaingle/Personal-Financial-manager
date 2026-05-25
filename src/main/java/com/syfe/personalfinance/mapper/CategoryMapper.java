@@ -12,10 +12,9 @@ public class CategoryMapper {
             return null;
         }
         return CategoryDto.CategoryResponse.builder()
-                .id(category.getId())
                 .name(category.getName())
                 .type(category.getType())
-                .isDefault(category.isDefault())
+                .isCustom(!category.isDefault())
                 .build();
     }
 
@@ -26,7 +25,7 @@ public class CategoryMapper {
         return Category.builder()
                 .name(request.getName())
                 .type(request.getType())
-                .isDefault(false) // Custom categories are never default
+                .isDefault(false)
                 .build();
     }
 }

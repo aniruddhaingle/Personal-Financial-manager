@@ -28,7 +28,6 @@ public class CategoryServiceImpl implements CategoryService {
     private final CategoryMapper categoryMapper;
     private final UserService userService;
 
-    // Constructor injection only
     public CategoryServiceImpl(CategoryRepository categoryRepository,
                                TransactionRepository transactionRepository,
                                CategoryMapper categoryMapper,
@@ -46,13 +45,11 @@ public class CategoryServiceImpl implements CategoryService {
         String categoryName = request.getName().trim();
         log.info("Creating custom category '{}' for user ID: {}", categoryName, currentUser.getId());
 
-        // Check if category name conflicts with any global default category (case-insensitive)
         if (categoryRepository.existsByNameIgnoreCaseAndUserIsNull(categoryName)) {
             log.warn("Category creation failed: Name '{}' is a reserved default category", categoryName);
             throw new ConflictException("A default category with this name already exists");
         }
 
-        // Check if category name conflicts with user's existing custom categories (case-insensitive)
         if (categoryRepository.existsByNameIgnoreCaseAndUserId(categoryName, currentUser.getId())) {
             log.warn("Category creation failed: Custom category '{}' already exists for user ID: {}", categoryName, currentUser.getId());
             throw new ConflictException("Custom category name must be unique per user");
@@ -60,7 +57,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         Category category = categoryMapper.toEntity(request);
         category.setName(categoryName);
-        category.setUser(currentUser); // Associate custom category with active authenticated user
+        category.setUser(currentUser);
         category.setDefault(false);
 
         Category savedCategory = categoryRepository.save(category);
@@ -84,35 +81,32 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public void deleteCategory(Long id) {
+    public void deleteCategory(String name) {
         User currentUser = userService.getAuthenticatedUserEntity();
-        log.info("Processing deletion request for category ID: {} by user ID: {}", id, currentUser.getId());
+        log.info("Processing deletion request for category '{}' by user ID: {}", name, currentUser.getId());
 
-        Category category = categoryRepository.findById(id)
+        Category category = categoryRepository.findByNameIgnoreCaseAndUserAvailable(name, currentUser.getId())
                 .orElseThrow(() -> {
-                    log.warn("Category deletion failed: ID {} not found", id);
+                    log.warn("Category deletion failed: '{}' not found", name);
                     return new ResourceNotFoundException("Category not found");
                 });
 
-        // 1. Prevent deletion of default categories
         if (category.isDefault() || category.getUser() == null) {
-            log.warn("Category deletion failed: ID {} is a global default category", id);
+            log.warn("Category deletion failed: '{}' is a global default category", name);
             throw new BadRequestException("Default categories cannot be deleted");
         }
 
-        // 2. Prevent unauthorized deletion of other users' custom categories (Ownership check)
         if (!category.getUser().getId().equals(currentUser.getId())) {
-            log.warn("Category deletion failed: Custom category ID {} does not belong to user ID: {}", id, currentUser.getId());
+            log.warn("Category deletion failed: Custom category '{}' does not belong to user ID: {}", name, currentUser.getId());
             throw new ForbiddenException("Access denied: You do not own this category");
         }
 
-        // 3. Prevent deletion of categories already used in transactions
-        if (transactionRepository.existsByCategoryId(id)) {
-            log.warn("Category deletion failed: Custom category ID {} is currently linked to active transactions", id);
+        if (transactionRepository.existsByCategoryId(category.getId())) {
+            log.warn("Category deletion failed: Custom category '{}' is currently linked to active transactions", name);
             throw new ConflictException("Cannot delete category as it is currently used in transactions");
         }
 
         categoryRepository.delete(category);
-        log.info("Category ID: {} deleted successfully", id);
+        log.info("Category '{}' deleted successfully", name);
     }
 }

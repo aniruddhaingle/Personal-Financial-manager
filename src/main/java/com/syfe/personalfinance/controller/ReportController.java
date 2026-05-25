@@ -1,15 +1,13 @@
 package com.syfe.personalfinance.controller;
 
-import com.syfe.personalfinance.dto.ApiResponse;
-import com.syfe.personalfinance.dto.ReportDto.ReportResponse;
+import com.syfe.personalfinance.dto.ReportDto.MonthlyReportResponse;
+import com.syfe.personalfinance.dto.ReportDto.YearlyReportResponse;
 import com.syfe.personalfinance.service.ReportService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -17,35 +15,22 @@ public class ReportController {
 
     private final ReportService reportService;
 
-    // Constructor injection only
     public ReportController(ReportService reportService) {
         this.reportService = reportService;
     }
 
-    @GetMapping("/monthly")
-    public ResponseEntity<ApiResponse<ReportResponse>> getMonthlyReport(
-            @RequestParam int year,
-            @RequestParam int month) {
+    @GetMapping("/monthly/{year}/{month}")
+    public ResponseEntity<MonthlyReportResponse> getMonthlyReport(
+            @PathVariable int year,
+            @PathVariable int month) {
 
-        ReportResponse responseData = reportService.getMonthlyReport(year, month);
-        ApiResponse<ReportResponse> response = ApiResponse.<ReportResponse>builder()
-                .success(true)
-                .message("Monthly report generated successfully")
-                .data(responseData)
-                .timestamp(LocalDateTime.now())
-                .build();
-        return ResponseEntity.ok(response);
+        MonthlyReportResponse responseData = reportService.getMonthlyReport(year, month);
+        return ResponseEntity.ok(responseData);
     }
 
-    @GetMapping("/yearly")
-    public ResponseEntity<ApiResponse<ReportResponse>> getYearlyReport(@RequestParam int year) {
-        ReportResponse responseData = reportService.getYearlyReport(year);
-        ApiResponse<ReportResponse> response = ApiResponse.<ReportResponse>builder()
-                .success(true)
-                .message("Yearly report generated successfully")
-                .data(responseData)
-                .timestamp(LocalDateTime.now())
-                .build();
-        return ResponseEntity.ok(response);
+    @GetMapping("/yearly/{year}")
+    public ResponseEntity<YearlyReportResponse> getYearlyReport(@PathVariable int year) {
+        YearlyReportResponse responseData = reportService.getYearlyReport(year);
+        return ResponseEntity.ok(responseData);
     }
 }

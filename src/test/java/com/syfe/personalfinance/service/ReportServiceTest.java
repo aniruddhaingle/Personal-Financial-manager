@@ -1,6 +1,6 @@
 package com.syfe.personalfinance.service;
 
-import com.syfe.personalfinance.dto.ReportDto.ReportResponse;
+import com.syfe.personalfinance.dto.ReportDto.MonthlyReportResponse;
 import com.syfe.personalfinance.entity.User;
 import com.syfe.personalfinance.enums.CategoryType;
 import com.syfe.personalfinance.repository.TransactionRepository;
@@ -60,13 +60,11 @@ class ReportServiceTest {
         when(transactionRepository.sumByCategoryAndDateRange(100L, CategoryType.EXPENSE, startDate, endDate))
                 .thenReturn(mockExpenseSummary);
 
-        ReportResponse report = reportService.getMonthlyReport(2026, 5);
+        MonthlyReportResponse report = reportService.getMonthlyReport(2026, 5);
 
         assertNotNull(report);
-        assertEquals(new BigDecimal("6200.00"), report.getTotalIncome()); // 5000 + 1200
-        assertEquals(new BigDecimal("1800.00"), report.getTotalExpense()); // 450 + 1200 + 150
-        assertEquals(new BigDecimal("4400.00"), report.getNetSavings()); // 6200 - 1800
-        assertTrue(report.getIncomeByCategory().containsKey("Salary"));
-        assertTrue(report.getExpenseByCategory().containsKey("Rent"));
+        assertEquals(new BigDecimal("4400.00"), report.getNetSavings());
+        assertTrue(report.getTotalIncome().containsKey("Salary"));
+        assertTrue(report.getTotalExpenses().containsKey("Rent"));
     }
 }

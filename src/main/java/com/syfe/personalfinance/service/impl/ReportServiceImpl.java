@@ -23,7 +23,6 @@ public class ReportServiceImpl implements ReportService {
     private final TransactionRepository transactionRepository;
     private final UserService userService;
 
-    // Constructor injection only
     public ReportServiceImpl(TransactionRepository transactionRepository, UserService userService) {
         this.transactionRepository = transactionRepository;
         this.userService = userService;
@@ -31,60 +30,59 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public ReportDto.ReportResponse getMonthlyReport(int year, int month) {
+    public ReportDto.MonthlyReportResponse getMonthlyReport(int year, int month) {
         User currentUser = userService.getAuthenticatedUserEntity();
         log.info("Generating monthly report for {}-{} and user ID: {}", year, month, currentUser.getId());
 
-        // Resolve dates natively using LocalDate details
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = LocalDate.of(year, month, startDate.lengthOfMonth());
 
-        return generateReport(currentUser, startDate, endDate);
+        List<Object[]> incomeList = transactionRepository.sumByCategoryAndDateRange(currentUser.getId(), CategoryType.INCOME, startDate, endDate);
+        List<Object[]> expenseList = transactionRepository.sumByCategoryAndDateRange(currentUser.getId(), CategoryType.EXPENSE, startDate, endDate);
+
+        Map<String, BigDecimal> totalIncome = convertToMap(incomeList);
+        Map<String, BigDecimal> totalExpenses = convertToMap(expenseList);
+
+        BigDecimal sumIncome = totalIncome.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal sumExpense = totalExpenses.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal netSavings = sumIncome.subtract(sumExpense);
+
+        return ReportDto.MonthlyReportResponse.builder()
+                .month(month)
+                .year(year)
+                .totalIncome(totalIncome)
+                .totalExpenses(totalExpenses)
+                .netSavings(netSavings)
+                .build();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ReportDto.ReportResponse getYearlyReport(int year) {
+    public ReportDto.YearlyReportResponse getYearlyReport(int year) {
         User currentUser = userService.getAuthenticatedUserEntity();
         log.info("Generating yearly report for year {} and user ID: {}", year, currentUser.getId());
 
         LocalDate startDate = LocalDate.of(year, 1, 1);
         LocalDate endDate = LocalDate.of(year, 12, 31);
 
-        return generateReport(currentUser, startDate, endDate);
-    }
+        List<Object[]> incomeList = transactionRepository.sumByCategoryAndDateRange(currentUser.getId(), CategoryType.INCOME, startDate, endDate);
+        List<Object[]> expenseList = transactionRepository.sumByCategoryAndDateRange(currentUser.getId(), CategoryType.EXPENSE, startDate, endDate);
 
-    // Shared Helper: Calculates categories groupings and net savings within a timeframe
-    private ReportDto.ReportResponse generateReport(User user, LocalDate startDate, LocalDate endDate) {
-        // Fetch aggregated values from database grouped by category names
-        List<Object[]> incomeList = transactionRepository.sumByCategoryAndDateRange(user.getId(), CategoryType.INCOME, startDate, endDate);
-        List<Object[]> expenseList = transactionRepository.sumByCategoryAndDateRange(user.getId(), CategoryType.EXPENSE, startDate, endDate);
+        Map<String, BigDecimal> totalIncome = convertToMap(incomeList);
+        Map<String, BigDecimal> totalExpenses = convertToMap(expenseList);
 
-        Map<String, BigDecimal> incomeByCategory = convertToMap(incomeList);
-        Map<String, BigDecimal> expenseByCategory = convertToMap(expenseList);
+        BigDecimal sumIncome = totalIncome.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal sumExpense = totalExpenses.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal netSavings = sumIncome.subtract(sumExpense);
 
-        // Sum up total income and expense amounts
-        BigDecimal totalIncome = incomeByCategory.values().stream()
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalExpense = expenseByCategory.values().stream()
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // Formula: net savings = total income - total expenses
-        BigDecimal netSavings = totalIncome.subtract(totalExpense);
-
-        log.debug("Report aggregated: totalIncome={}, totalExpense={}, netSavings={}", totalIncome, totalExpense, netSavings);
-
-        return ReportDto.ReportResponse.builder()
+        return ReportDto.YearlyReportResponse.builder()
+                .year(year)
                 .totalIncome(totalIncome)
-                .totalExpense(totalExpense)
+                .totalExpenses(totalExpenses)
                 .netSavings(netSavings)
-                .incomeByCategory(incomeByCategory)
-                .expenseByCategory(expenseByCategory)
                 .build();
     }
 
-    // Convert SQL projection results list into category mappings
     private Map<String, BigDecimal> convertToMap(List<Object[]> queryResults) {
         Map<String, BigDecimal> summaryMap = new HashMap<>();
         if (queryResults != null) {

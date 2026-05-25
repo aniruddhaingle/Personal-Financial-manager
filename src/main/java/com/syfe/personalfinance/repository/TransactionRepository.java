@@ -2,8 +2,6 @@ package com.syfe.personalfinance.repository;
 
 import com.syfe.personalfinance.entity.Transaction;
 import com.syfe.personalfinance.enums.CategoryType;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,28 +15,26 @@ import java.util.Optional;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
-    // Isolated lookup of transaction by id and user
     Optional<Transaction> findByIdAndUserId(Long id, Long userId);
 
-    // Paginated, sorted, and filtered transaction query optimizing category fetching
     @Query("SELECT t FROM Transaction t JOIN FETCH t.category WHERE t.user.id = :userId " +
            "AND (:startDate IS NULL OR t.date >= :startDate) " +
            "AND (:endDate IS NULL OR t.date <= :endDate) " +
            "AND (:categoryName IS NULL OR LOWER(t.category.name) = LOWER(:categoryName)) " +
-           "AND (:categoryType IS NULL OR t.category.type = :categoryType)")
-    Page<Transaction> findAllFiltered(
+           "AND (:categoryId IS NULL OR t.category.id = :categoryId) " +
+           "AND (:categoryType IS NULL OR t.category.type = :categoryType) " +
+           "ORDER BY t.date DESC, t.id DESC")
+    List<Transaction> findAllFiltered(
             @Param("userId") Long userId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("categoryName") String categoryName,
-            @Param("categoryType") CategoryType categoryType,
-            Pageable pageable
+            @Param("categoryId") Long categoryId,
+            @Param("categoryType") CategoryType categoryType
     );
 
-    // Check if category is used in any transactions (prevent category deletion)
     boolean existsByCategoryId(Long categoryId);
 
-    // Dynamic aggregation query: sum transaction amounts since a start date (used for savings progress calculations)
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t " +
            "WHERE t.user.id = :userId " +
            "AND t.category.type = :type " +
@@ -49,7 +45,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("startDate") LocalDate startDate
     );
 
-    // Report aggregation: sum amounts grouped by category in a specific date range
     @Query("SELECT t.category.name, COALESCE(SUM(t.amount), 0) FROM Transaction t " +
            "WHERE t.user.id = :userId " +
            "AND t.category.type = :type " +

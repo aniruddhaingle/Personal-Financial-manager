@@ -12,17 +12,16 @@ import java.util.Optional;
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
-    // Fetch all categories readable by the user: default categories + their own custom ones
     @Query("SELECT c FROM Category c WHERE c.user.id = :userId OR c.user IS NULL ORDER BY c.isDefault DESC, c.name ASC")
     List<Category> findAllAvailableToUser(@Param("userId") Long userId);
 
-    // Fetch a specific category checking if it is available to the user
     @Query("SELECT c FROM Category c WHERE c.id = :id AND (c.user.id = :userId OR c.user IS NULL)")
     Optional<Category> findByIdAndUserAvailable(@Param("id") Long id, @Param("userId") Long userId);
 
-    // Check if custom category name already exists for user (case-insensitive)
+    @Query("SELECT c FROM Category c WHERE LOWER(c.name) = LOWER(:name) AND (c.user.id = :userId OR c.user IS NULL)")
+    Optional<Category> findByNameIgnoreCaseAndUserAvailable(@Param("name") String name, @Param("userId") Long userId);
+
     boolean existsByNameIgnoreCaseAndUserId(String name, Long userId);
 
-    // Check if a global default category already exists with the name (case-insensitive)
     boolean existsByNameIgnoreCaseAndUserIsNull(String name);
 }

@@ -1,5 +1,7 @@
 package com.syfe.personalfinance.dto;
 
+import com.syfe.personalfinance.enums.CategoryType;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;
@@ -7,6 +9,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public class TransactionDto {
 
@@ -24,8 +27,8 @@ public class TransactionDto {
         @PastOrPresent(message = "Transaction date cannot be in the future")
         private LocalDate date;
 
-        @NotNull(message = "Category identifier is required")
-        private Long categoryId;
+        @NotBlank(message = "Category name is required")
+        private String category;
 
         private String description;
     }
@@ -36,12 +39,10 @@ public class TransactionDto {
     @AllArgsConstructor
     @Builder
     public static class UpdateTransactionRequest {
-        @NotNull(message = "Transaction amount is required")
         @Positive(message = "Amount must be a positive number")
         private BigDecimal amount;
 
-        @NotNull(message = "Category identifier is required")
-        private Long categoryId;
+        private String category;
 
         private String description;
     }
@@ -55,7 +56,17 @@ public class TransactionDto {
         private Long id;
         private BigDecimal amount;
         private LocalDate date;
+        private String category;
         private String description;
-        private CategoryDto.CategoryResponse category;
+        private CategoryType type;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class TransactionListResponse {
+        private List<TransactionResponse> transactions;
     }
 }

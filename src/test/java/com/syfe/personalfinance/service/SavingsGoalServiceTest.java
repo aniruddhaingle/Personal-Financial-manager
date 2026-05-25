@@ -66,7 +66,7 @@ class SavingsGoalServiceTest {
                 .user(testUser)
                 .build();
 
-        SavingsGoalDto.GoalResponse expectedResponse = SavingsGoalDto.GoalResponse.builder()
+        GoalProgressResponse expectedResponse = GoalProgressResponse.builder()
                 .id(1L)
                 .goalName("Car fund")
                 .targetAmount(new BigDecimal("10000.00"))
@@ -75,9 +75,9 @@ class SavingsGoalServiceTest {
         when(userService.getAuthenticatedUserEntity()).thenReturn(testUser);
         when(savingsGoalMapper.toEntity(request)).thenReturn(goalEntity);
         when(savingsGoalRepository.save(any(SavingsGoal.class))).thenReturn(goalEntity);
-        when(savingsGoalMapper.toResponse(any(SavingsGoal.class))).thenReturn(expectedResponse);
+        when(savingsGoalMapper.toProgressResponse(any(SavingsGoal.class), any(), any(), any())).thenReturn(expectedResponse);
 
-        SavingsGoalDto.GoalResponse response = savingsGoalService.createGoal(request);
+        GoalProgressResponse response = savingsGoalService.createGoal(request);
 
         assertNotNull(response);
         assertEquals("Car fund", response.getGoalName());
@@ -90,7 +90,7 @@ class SavingsGoalServiceTest {
                 .goalName("Car fund")
                 .targetAmount(new BigDecimal("10000.00"))
                 .startDate(LocalDate.now())
-                .targetDate(LocalDate.now().minusDays(5)) // Invalid targetDate
+                .targetDate(LocalDate.now().minusDays(5))
                 .build();
 
         when(userService.getAuthenticatedUserEntity()).thenReturn(testUser);
@@ -123,10 +123,8 @@ class SavingsGoalServiceTest {
         when(userService.getAuthenticatedUserEntity()).thenReturn(testUser);
         when(savingsGoalRepository.findByIdAndUserId(1L, 100L)).thenReturn(Optional.of(goal));
 
-        // sum of Income since startDate = 5000.00
         when(transactionRepository.sumAmountByUserIdAndCategoryTypeSinceDate(100L, CategoryType.INCOME, startDate))
                 .thenReturn(new BigDecimal("5000.00"));
-        // sum of Expense since startDate = 2000.00
         when(transactionRepository.sumAmountByUserIdAndCategoryTypeSinceDate(100L, CategoryType.EXPENSE, startDate))
                 .thenReturn(new BigDecimal("2000.00"));
 
@@ -136,8 +134,8 @@ class SavingsGoalServiceTest {
         GoalProgressResponse progress = savingsGoalService.getGoalProgress(1L);
 
         assertNotNull(progress);
-        assertEquals(new BigDecimal("3000.00"), progress.getCurrentProgress()); // 5000 - 2000
-        assertEquals(new BigDecimal("30.00"), progress.getProgressPercentage()); // (3000/10000) * 100
-        assertEquals(new BigDecimal("7000.00"), progress.getRemainingAmount()); // 10000 - 3000
+        assertEquals(new BigDecimal("3000.00"), progress.getCurrentProgress());
+        assertEquals(new BigDecimal("30.00"), progress.getProgressPercentage());
+        assertEquals(new BigDecimal("7000.00"), progress.getRemainingAmount());
     }
 }

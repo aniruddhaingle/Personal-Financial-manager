@@ -1,6 +1,5 @@
 package com.syfe.personalfinance.service;
 
-import com.syfe.personalfinance.dto.CategoryDto;
 import com.syfe.personalfinance.dto.TransactionDto;
 import com.syfe.personalfinance.dto.TransactionDto.TransactionResponse;
 import com.syfe.personalfinance.entity.Category;
@@ -59,7 +58,7 @@ class TransactionServiceTest {
         TransactionDto.CreateTransactionRequest request = TransactionDto.CreateTransactionRequest.builder()
                 .amount(new BigDecimal("150.00"))
                 .date(date)
-                .categoryId(10L)
+                .category("Food")
                 .description("Groceries")
                 .build();
 
@@ -76,11 +75,12 @@ class TransactionServiceTest {
                 .amount(new BigDecimal("150.00"))
                 .date(date)
                 .description("Groceries")
-                .category(CategoryDto.CategoryResponse.builder().id(10L).name("Food").build())
+                .category("Food")
+                .type(CategoryType.EXPENSE)
                 .build();
 
         when(userService.getAuthenticatedUserEntity()).thenReturn(testUser);
-        when(categoryRepository.findByIdAndUserAvailable(10L, 100L)).thenReturn(Optional.of(testCategory));
+        when(categoryRepository.findByNameIgnoreCaseAndUserAvailable("Food", 100L)).thenReturn(Optional.of(testCategory));
         when(transactionMapper.toEntity(request)).thenReturn(transactionEntity);
         when(transactionRepository.save(any(Transaction.class))).thenReturn(transactionEntity);
         when(transactionMapper.toResponse(any(Transaction.class))).thenReturn(expectedResponse);
@@ -99,7 +99,7 @@ class TransactionServiceTest {
         TransactionDto.CreateTransactionRequest request = TransactionDto.CreateTransactionRequest.builder()
                 .amount(new BigDecimal("150.00"))
                 .date(futureDate)
-                .categoryId(10L)
+                .category("Food")
                 .build();
 
         when(userService.getAuthenticatedUserEntity()).thenReturn(testUser);
@@ -113,7 +113,7 @@ class TransactionServiceTest {
         Transaction existingTransaction = Transaction.builder()
                 .id(50L)
                 .amount(new BigDecimal("100.00"))
-                .date(LocalDate.now().minusDays(5)) // Date is set
+                .date(LocalDate.now().minusDays(5))
                 .description("Old Desc")
                 .category(testCategory)
                 .user(testUser)
@@ -121,20 +121,20 @@ class TransactionServiceTest {
 
         TransactionDto.UpdateTransactionRequest request = TransactionDto.UpdateTransactionRequest.builder()
                 .amount(new BigDecimal("120.00"))
-                .categoryId(10L)
+                .category("Food")
                 .description("New Desc")
                 .build();
 
         TransactionResponse expectedResponse = TransactionResponse.builder()
                 .id(50L)
                 .amount(new BigDecimal("120.00"))
-                .date(LocalDate.now().minusDays(5)) // Date unchanged
+                .date(LocalDate.now().minusDays(5))
                 .description("New Desc")
                 .build();
 
         when(userService.getAuthenticatedUserEntity()).thenReturn(testUser);
         when(transactionRepository.findByIdAndUserId(50L, 100L)).thenReturn(Optional.of(existingTransaction));
-        when(categoryRepository.findByIdAndUserAvailable(10L, 100L)).thenReturn(Optional.of(testCategory));
+        when(categoryRepository.findByNameIgnoreCaseAndUserAvailable("Food", 100L)).thenReturn(Optional.of(testCategory));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(transactionMapper.toResponse(any(Transaction.class))).thenReturn(expectedResponse);
 
@@ -142,7 +142,7 @@ class TransactionServiceTest {
 
         assertNotNull(response);
         assertEquals(new BigDecimal("120.00"), response.getAmount());
-        assertEquals(LocalDate.now().minusDays(5), response.getDate()); // Enforced date constraint
+        assertEquals(LocalDate.now().minusDays(5), response.getDate());
         assertEquals("New Desc", response.getDescription());
     }
 }
