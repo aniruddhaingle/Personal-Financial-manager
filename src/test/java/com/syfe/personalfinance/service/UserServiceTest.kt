@@ -22,7 +22,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.util.Optional
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(MockitoExtension::class)
 class UserServiceTest {
 
     @Mock
